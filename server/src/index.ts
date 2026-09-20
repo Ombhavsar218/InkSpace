@@ -1,5 +1,6 @@
 import express from 'express';
 import http from 'http';
+import path from 'path';
 import cors from 'cors';
 import { Server as SocketIOServer } from 'socket.io';
 import { config } from './config';
@@ -41,6 +42,18 @@ app.get('/api/health', (_req, res) => {
 
 // Setup Real-time collaboration sockets
 setupSocketGateway(io);
+
+// Serve the built client (single-origin production deploy)
+const clientDist = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDist));
+
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+  res.sendFile(path.join(clientDist, 'index.html'));
+});
 
 // Start server
 server.listen(config.port, () => {
