@@ -71,7 +71,7 @@ export const useCollabStore = create<CollabStoreState>((set, get) => ({
     }
 
     const { userColor } = get();
-    const socket = io(window.location.origin, {
+    const socket = io(import.meta.env.VITE_API_URL || window.location.origin, {
       transports: ['websocket', 'polling'],
     });
 

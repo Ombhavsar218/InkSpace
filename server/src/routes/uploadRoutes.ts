@@ -1,29 +1,12 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import path from 'path';
-import fs from 'fs';
-import { config } from '../config';
+import { put } from '@vercel/blob';
 
 const router = Router();
 
-// Ensure upload directory exists
-if (!fs.existsSync(config.uploadsDir)) {
-  fs.mkdirSync(config.uploadsDir, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, config.uploadsDir);
-  },
-  filename: (_req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, `img-${uniqueSuffix}${ext}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
   fileFilter: (_req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
@@ -34,20 +17,40 @@ const upload = multer({
   },
 });
 
-router.post('/', upload.single('file'), (req: Request, res: Response): void => {
-  if (!req.file) {
-    res.status(400).json({ error: 'No image file uploaded' });
-    return;
-  }
+router.post(
+  '/',
+  upload.single('file'),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      if (!req.file) {
+        res.status(400).json({ error: 'No image file uploaded' });
+        return;
+      }
 
-  const fileUrl = `/uploads/${req.file.filename}`;
-  res.json({
-    url: fileUrl,
-    filename: req.file.filename,
-    originalName: req.file.originalname,
-    size: req.file.size,
-    mimetype: req.file.mimetype,
-  });
-});
+      if (!process.env.BLOB_READ_WRITE_TOKEN) {
+        res.status(503).json({ error: 'BLOB_READ_WRITE_TOKEN is not configured' });
+        return;
+      }
+
+      const ext = path.extname(req.file.originalname);
+      const key = `images/img-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+      const blob = await put(key, req.file.buffer, {
+        access: 'public',
+        contentType: req.file.mimetype,
+      });
+
+      res.json({
+        url: blob.url,
+        filename: blob.pathname,
+        originalName: req.file.originalname,
+        size: req.file.size,
+        mimetype: req.file.mimetype,
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      res.status(500).json({ error: 'Upload failed' });
+    }
+  }
+);
 
 export default router;
