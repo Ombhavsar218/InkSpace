@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+client/dist/
+server/dist/
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Database (SQLite)
+*.db
+*.db-journal
+server/prisma/dev.db
+
+# Uploads / runtime files
+uploads/
+*.log
+logs/
+
+# Tooling
+.kilo/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.tsbuildinfo

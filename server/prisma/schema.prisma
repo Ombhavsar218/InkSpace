@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  name          String
+  email         String         @unique
+  passwordHash  String
+  avatar        String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  whiteboards   Whiteboard[]   @relation("UserWhiteboards")
+  collaborations Collaborator[]
+  comments      Comment[]
+}
+
+model Whiteboard {
+  id            String         @id @default(uuid())
+  title         String         @default("Untitled Whiteboard")
+  ownerId       String
+  owner         User           @relation("UserWhiteboards", fields: [ownerId], references: [id], onDelete: Cascade)
+  canvasData    String         @default("[]") // JSON string of canvas elements
+  viewState     String         @default("{\"scrollX\":0,\"scrollY\":0,\"zoom\":1}") // viewport state
+  thumbnail     String?        // Base64 or URL
+  isPublic      Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  collaborators Collaborator[]
+  versions      BoardVersion[]
+  comments      Comment[]
+}
+
+model Collaborator {
+  id           String     @id @default(uuid())
+  whiteboardId String
+  whiteboard   Whiteboard @relation(fields: [whiteboardId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  permission   String     @default("EDIT") // VIEW, EDIT, OWNER
+  createdAt    DateTime   @default(now())
+
+  @@unique([whiteboardId, userId])
+}
+
+model BoardVersion {
+  id           String     @id @default(uuid())
+  whiteboardId String
+  whiteboard   Whiteboard @relation(fields: [whiteboardId], references: [id], onDelete: Cascade)
+  name         String     @default("Auto-save Snapshot")
+  canvasData   String     // JSON snapshot
+  createdAt    DateTime   @default(now())
+}
+
+model Comment {
+  id           String     @id @default(uuid())
+  whiteboardId String
+  whiteboard   Whiteboard @relation(fields: [whiteboardId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  x            Float
+  y            Float
+  text         String
+  resolved     Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
